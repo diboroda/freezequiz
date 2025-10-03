@@ -21,6 +21,8 @@
             padding: 40px; 
             border-radius: 15px; 
             backdrop-filter: blur(10px);
+            max-width: 90%;
+            width: 400px;
         }
         button { 
             background: #4CAF50; 
@@ -31,52 +33,114 @@
             border-radius: 50px; 
             cursor: pointer; 
             margin: 20px 0; 
+            transition: all 0.3s;
         }
-        button:disabled { background: #cccccc; cursor: not-allowed; }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        button:disabled { 
+            background: #cccccc; 
+            cursor: not-allowed; 
+            transform: none;
+        }
+        #status {
+            margin: 20px 0;
+            min-height: 30px;
+            font-size: 1.1em;
+        }
+        .success { color: #90EE90; }
+        .info { color: #FFD700; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎤 Викторина</h1>
-        <p>Нажмите кнопку, чтобы поднять руку</p>
+        <p>Нажмите кнопку, чтобы поднять руку и ответить на вопрос</p>
+        
         <button id="raiseHandBtn">Поднять руку</button>
+        
         <div id="status"></div>
+        <p><small>Вы встанете в очередь. Дождитесь, когда ведущий назовёт ваше имя.</small></p>
     </div>
 
     <script>
+        // Генерируем уникальный ID для участника
         const participantId = 'user_' + Math.random().toString(36).substr(2, 9);
-        let participantName = prompt("Введите ваше имя:", "Участник") || "Аноним";
+        let participantName = '';
         let handRaised = false;
+        let lastResetTime = 0;
 
-        document.getElementById('raiseHandBtn').addEventListener('click', () => {
+        // Запрашиваем имя у пользователя
+        participantName = prompt("Введите ваше имя для участия в викторине:", "Участник");
+        if (!participantName || participantName.trim() === '') {
+            participantName = "Анонимный участник";
+        }
+
+        const raiseHandBtn = document.getElementById('raiseHandBtn');
+        const statusElement = document.getElementById('status');
+
+        // Функция поднятия руки
+        function raiseHand() {
             if (handRaised) return;
             
             handRaised = true;
-            document.getElementById('raiseHandBtn').disabled = true;
-            document.getElementById('status').textContent = "✅ Рука поднята! Ожидайте...";
+            raiseHandBtn.disabled = true;
+            statusElement.textContent = "✅ Вы подняли руку! Ожидайте своей очереди.";
+            statusElement.className = "success";
             
-            const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
-            raises.push({
-                participantId: participantId,
-                name: participantName,
-                timestamp: Date.now()
-            });
-            localStorage.setItem('handRaises', JSON.stringify(raises));
-        });
-
-        // Проверяем сброс очереди каждую секунду
-        setInterval(() => {
-            const resetTime = localStorage.getItem('quizReset');
-            if (resetTime && resetTime > (handRaised ? 0 : -1)) {
+            // Добавляем себя в очередь на сервере ведущего
+            try {
+                const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
+                raises.push({
+                    participantId: participantId,
+                    name: participantName,
+                    timestamp: Date.now()
+                });
+                localStorage.setItem('handRaises', JSON.stringify(raises));
+            } catch (e) {
+                statusElement.textContent = "❌ Ошибка. Попробуйте еще раз.";
+                statusElement.className = "";
                 handRaised = false;
-                document.getElementById('raiseHandBtn').disabled = false;
-                document.getElementById('status').textContent = "🔄 Можете снова поднять руку!";
-                
-                setTimeout(() => {
-                    document.getElementById('status').textContent = "";
-                }, 3000);
+                raiseHandBtn.disabled = false;
             }
-        }, 1000);
+        }
+
+        // Функция проверки сброса очереди
+        function checkForReset() {
+            try {
+                const resetTime = parseInt(localStorage.getItem('quizReset') || '0');
+                
+                if (resetTime > lastResetTime) {
+                    lastResetTime = resetTime;
+                    
+                    if (handRaised) {
+                        handRaised = false;
+                        raiseHandBtn.disabled = false;
+                        statusElement.textContent = "🔄 Начат новый вопрос! Можете снова поднять руку.";
+                        statusElement.className = "info";
+                        
+                        // Через 5 секунд убираем сообщение
+                        setTimeout(() => {
+                            if (!handRaised) {
+                                statusElement.textContent = "";
+                            }
+                        }, 5000);
+                    }
+                }
+            } catch (e) {
+                console.log('Ошибка при проверке сброса:', e);
+            }
+        }
+
+        // Обработчик кнопки
+        raiseHandBtn.addEventListener('click', raiseHand);
+        
+        // Проверяем сброс очереди каждую секунду
+        setInterval(checkForReset, 1000);
+        
+        // Первоначальная проверка
+        checkForReset();
     </script>
 </body>
 </html>
