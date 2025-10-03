@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поднять руку - Викторина</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 90%;
+            width: 400px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 20px 40px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 24px;
+            margin: 20px 0;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #status {
+            margin: 20px 0;
+            font-size: 1.2em;
+            min-height: 30px;
+        }
+        .hand-raised {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .reset-notification {
+            color: #ffeb3b;
+            background: rgba(255, 235, 59, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Викторина</h1>
+        <p>Нажмите кнопку, чтобы поднять руку и ответить на вопрос</p>
+        
+        <button id="raiseHandBtn">Поднять руку</button>
+        
+        <div id="status"></div>
+        <div id="resetNotification" style="display: none;"></div>
+        <p><small>Вы встанете в очередь. Дождитесь, когда ведущий назовёт ваше имя.</small></p>
+    </div>
+
+    <script>
+        const raiseHandBtn = document.getElementById('raiseHandBtn');
+        const statusElement = document.getElementById('status');
+        const resetNotification = document.getElementById('resetNotification');
+
+        // Генерируем уникальный ID для участника
+        const participantId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let participantName = '';
+        let handRaised = false;
+
+        // Запрос имени у пользователя
+        participantName = prompt("Введите ваше имя для участия в викторине:", "Участник");
+        if (!participantName) {
+            participantName = "Анонимный участник";
+        }
+
+        // Имитация WebSocket
+        const channel = new BroadcastChannel('quiz_hand_raise');
+
+        raiseHandBtn.addEventListener('click', () => {
+            if (handRaised) return;
+
+            handRaised = true;
+            raiseHandBtn.disabled = true;
+            statusElement.textContent = "✅ Вы подняли руку! Ожидайте своей очереди.";
+            statusElement.className = "hand-raised";
+            resetNotification.style.display = 'none';
+
+            // Отправляем "поднятие руки" ведущему
+            const message = {
+                type: 'hand_raised',
+                participantId: participantId,
+                name: participantName,
+                timestamp: new Date().getTime()
+            };
+
+            channel.postMessage(message);
+            
+            // Резервный метод через localStorage
+            try {
+                const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
+                raises.push(message);
+                localStorage.setItem('handRaises', JSON.stringify(raises));
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
+        });
+
+        // Обработчик сброса очереди от ведущего
+        channel.onmessage = (event) => {
+            if (event.data && event.data.type === 'reset_queue') {
+                // Сбрасываем состояние кнопки
+                handRaised = false;
+                raiseHandBtn.disabled = false;
+                statusElement.textContent = "🔄 Очередь сброшена! Можете снова поднять руку.";
+                statusElement.className = "";
+                
+                // Показываем уведомление о сбросе
+                resetNotification.textContent = "Ведущий начал новый вопрос!";
+                resetNotification.className = "reset-notification";
+                resetNotification.style.display = 'block';
+                
+                // Автоматически скрываем уведомление через 5 секунд
+                setTimeout(() => {
+                    resetNotification.style.display = 'none';
+                    statusElement.textContent = "";
+                }, 5000);
+            }
+        };
+
+        // При загрузке страницы проверяем, не поднимали ли мы уже руку
+        window.addEventListener('load', () => {
+            // Можно добавить логику для восстановления состояния при перезагрузке страницы
+            // Но в данном случае проще начинать с чистого листа
+        });
+    </script>
+</body>
+</html>
