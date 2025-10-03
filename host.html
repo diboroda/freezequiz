@@ -5,194 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель ведущего - Викторина</title>
     <style>
-        body {
-            font-family: sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            text-align: center;
-        }
-        #queue {
-            list-style: none;
-            padding: 0;
-            min-height: 200px;
-        }
-        #queue li {
-            background: #f0f0f0;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 5px;
-            font-size: 1.2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        #queue li .number {
-            font-weight: bold;
-            color: #333;
-        }
-        #queue li .time {
-            font-size: 0.8em;
-            color: #666;
-        }
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 5px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        #resetBtn {
-            background-color: #f44336;
-        }
-        #status {
-            margin: 20px 0;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .waiting { background-color: #fff3cd; color: #856404; }
-        .active { background-color: #d4edda; color: #155724; }
-        .participant-link {
-            margin-top: 30px;
-            padding: 15px;
-            background: #e7f3ff;
-            border-radius: 5px;
-            word-break: break-all;
-        }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
+        #queue { list-style: none; padding: 0; min-height: 200px; }
+        #queue li { background: #f0f0f0; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        button { background: #4CAF50; color: white; padding: 15px 32px; border: none; border-radius: 5px; margin: 10px; cursor: pointer; }
+        #resetBtn { background: #f44336; }
+        .participant-link { margin: 30px 0; padding: 15px; background: #e7f3ff; border-radius: 5px; }
     </style>
 </head>
 <body>
     <h1>🎤 Панель ведущего</h1>
-    <p>Раздайте эту ссылку зрителям для поднятия руки:</p>
+    <p>Раздайте эту ссылку зрителям:</p>
     <div class="participant-link">
-        <strong>Ссылка для зала:</strong><br>
-        <span id="participantUrl">...</span>
+        <strong id="participantUrl">...</strong>
     </div>
 
-    <div id="status" class="waiting">Очередь пуста. Ожидание поднятых рук...</div>
+    <div id="status">Ожидание поднятых рук...</div>
 
     <h2>Очередь ответа:</h2>
     <ul id="queue"></ul>
 
     <div>
-        <button id="nextBtn" disabled>Следующий в очереди</button>
+        <button id="nextBtn" disabled>Следующий</button>
         <button id="resetBtn">Сбросить очередь</button>
     </div>
 
     <script>
-        const queueElement = document.getElementById('queue');
-        const statusElement = document.getElementById('status');
-        const nextBtn = document.getElementById('nextBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const participantUrlElement = document.getElementById('participantUrl');
-
-        // Генерируем ссылку для участников
         const participantUrl = window.location.href.replace('host.html', 'participant.html');
-        participantUrlElement.textContent = participantUrl;
-
-        // Имитация WebSocket для простоты
-        const channel = new BroadcastChannel('quiz_hand_raise');
+        document.getElementById('participantUrl').textContent = participantUrl;
 
         let queue = [];
-        let questionStartTime = null;
-
-        // Обработчик сообщений от участников
-        channel.onmessage = (event) => {
-            if (event.data.type === 'hand_raised') {
-                addToQueue(event.data.participantId, event.data.name, event.data.timestamp);
+        
+        // Проверяем новые "поднятия рук" каждую секунду
+        setInterval(() => {
+            const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
+            if (raises.length > 0) {
+                raises.forEach(raise => {
+                    if (!queue.find(p => p.id === raise.participantId)) {
+                        queue.push({
+                            id: raise.participantId,
+                            name: raise.name,
+                            timestamp: raise.timestamp
+                        });
+                        renderQueue();
+                    }
+                });
+                localStorage.setItem('handRaises', '[]');
             }
-        };
-
-        // Загрузка состояния из localStorage при загрузке страницы
-        window.addEventListener('load', () => {
-            const savedQueue = localStorage.getItem('quizQueue');
-            if (savedQueue) {
-                queue = JSON.parse(savedQueue);
-                renderQueue();
-            }
-            questionStartTime = new Date().getTime();
-        });
-
-        function addToQueue(participantId, name, timestamp) {
-            // Проверяем, нет ли уже этого участника в очереди
-            if (queue.find(p => p.id === participantId)) {
-                return;
-            }
-
-            const participant = {
-                id: participantId,
-                name: name,
-                timestamp: timestamp,
-                time: questionStartTime ? new Date().getTime() - questionStartTime : 0
-            };
-
-            queue.push(participant);
-            saveQueue();
-            renderQueue();
-        }
+        }, 1000);
 
         function renderQueue() {
+            const queueElement = document.getElementById('queue');
             queueElement.innerHTML = '';
             
-            if (queue.length === 0) {
-                statusElement.textContent = 'Очередь пуста. Ожидание поднятых рук...';
-                statusElement.className = 'status waiting';
-                nextBtn.disabled = true;
-                return;
-            }
-
-            statusElement.textContent = `В очереди: ${queue.length} человек(а)`;
-            statusElement.className = 'status active';
-            nextBtn.disabled = false;
-
             queue.forEach((participant, index) => {
                 const li = document.createElement('li');
-                const timeText = participant.time > 0 ? 
-                    ` (${Math.floor(participant.time / 1000)} сек.)` : '';
-
-                li.innerHTML = `
-                    <span class="number">${index + 1}.</span>
-                    <span class="name">${participant.name}</span>
-                    <span class="time">${timeText}</span>
-                `;
+                li.innerHTML = `<strong>${index + 1}.</strong> ${participant.name}`;
                 queueElement.appendChild(li);
             });
+            
+            document.getElementById('status').textContent = `В очереди: ${queue.length} человек`;
+            document.getElementById('nextBtn').disabled = queue.length === 0;
         }
 
-        function saveQueue() {
-            localStorage.setItem('quizQueue', JSON.stringify(queue));
-        }
-
-        // Кнопка "Следующий в очереди"
-        nextBtn.addEventListener('click', () => {
+        document.getElementById('nextBtn').addEventListener('click', () => {
             if (queue.length > 0) {
-                const nextParticipant = queue.shift();
-                alert(`Следующий: ${nextParticipant.name}`);
-                saveQueue();
+                const next = queue.shift();
+                alert(`Следующий: ${next.name}`);
                 renderQueue();
             }
         });
 
-        // Кнопка "Сбросить очередь"
-        resetBtn.addEventListener('click', () => {
+        document.getElementById('resetBtn').addEventListener('click', () => {
             queue = [];
-            questionStartTime = new Date().getTime(); // Запускаем новый отсчет времени для нового вопроса
-            saveQueue();
             renderQueue();
-            
-            // ОТПРАВЛЯЕМ СООБЩЕНИЕ ВСЕМ УЧАСТНИКАМ О СБРОСЕ
-            channel.postMessage({
-                type: 'reset_queue',
-                timestamp: new Date().getTime()
-            });
-            
-            alert('Очередь сброшена! Все участники могут снова поднимать руки.');
+            // Сообщаем участникам о сбросе
+            localStorage.setItem('quizReset', Date.now().toString());
+            alert('Очередь сброшена!');
         });
     </script>
 </body>
