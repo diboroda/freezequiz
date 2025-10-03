@@ -5,58 +5,187 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель ведущего - FREEZEQUIZ</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
-        #queue { list-style: none; padding: 0; min-height: 200px; }
-        #queue li { background: #f0f0f0; margin: 10px 0; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; }
-        button { background: #4CAF50; color: white; padding: 15px 32px; border: none; border-radius: 5px; margin: 10px; cursor: pointer; }
-        #resetBtn { background: #f44336; }
-        .participant-link { margin: 30px 0; padding: 15px; background: #e7f3ff; border-radius: 5px; }
-        .waiting { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; }
-        .active { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; }
-        .back-btn { background: #666; margin-top: 20px; }
-        .url-box { 
-            background: white; 
-            padding: 10px; 
-            border-radius: 5px; 
-            border: 1px solid #ccc;
-            margin: 10px 0;
-            word-break: break-all;
-            font-family: monospace;
+        body { 
+            font-family: sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        #queue { 
+            list-style: none; 
+            padding: 0; 
+            min-height: 200px; 
+            margin: 20px 0;
+        }
+        #queue li { 
+            background: rgba(255,255,255,0.2); 
+            margin: 10px 0; 
+            padding: 20px; 
+            border-radius: 15px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-size: 1.1em;
+        }
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .control-btn {
+            background: #4CAF50; 
+            color: white; 
+            padding: 25px 20px; 
+            border: none; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-size: 1.3em;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        .control-btn:active {
+            transform: translateY(-1px);
+        }
+        .control-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #resetBtn { 
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        #nextBtn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        .status-section {
+            margin: 25px 0;
+        }
+        .waiting { 
+            background: rgba(255,235,59,0.2); 
+            color: #fff3cd; 
+            padding: 20px; 
+            border-radius: 15px;
+            font-size: 1.2em;
+            border: 2px solid rgba(255,235,59,0.3);
+        }
+        .active { 
+            background: rgba(76,175,80,0.3); 
+            color: #d4edda; 
+            padding: 20px; 
+            border-radius: 15px;
+            font-size: 1.2em;
+            border: 2px solid rgba(76,175,80,0.5);
+        }
+        .back-btn { 
+            background: rgba(255,255,255,0.2); 
+            color: white;
+            margin-top: 20px; 
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
         }
         .reset-notification {
-            background: #d4edda;
-            color: #155724;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
+            background: rgba(76,175,80,0.3);
+            color: #d4edda;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
             display: none;
+            border: 1px solid rgba(76,175,80,0.5);
+            font-size: 1.1em;
+        }
+        .queue-title {
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+            color: #FFD700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .participant-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+        .participant-time {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                margin: 10px auto;
+            }
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .control-btn {
+                padding: 20px 15px;
+                font-size: 1.2em;
+            }
+            #queue li {
+                padding: 15px;
+                font-size: 1em;
+            }
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 </head>
 <body>
-    <h1>🎤 Панель ведущего FREEZEQUIZ</h1>
-    
-    <div class="participant-link">
-        <strong>Ссылка для участников:</strong><br>
-        <div class="url-box" id="participantUrl">Загрузка...</div>
-        <small>Отправьте эту ссылку участникам</small>
+    <div class="container">
+        <h1>🎤 FREEZEQUIZ</h1>
+        <h2>Панель ведущего</h2>
+        
+        <div class="status-section">
+            <div id="status" class="waiting">Ожидание поднятых рук...</div>
+        </div>
+
+        <div class="reset-notification" id="resetNotification">✅ Очередь сброшена!</div>
+
+        <div class="queue-title">Очередь ответа:</div>
+        <ul id="queue"></ul>
+
+        <div class="control-buttons">
+            <button id="nextBtn" class="control-btn" disabled>🎤 Следующий в очереди</button>
+            <button id="resetBtn" class="control-btn">🔄 Сбросить очередь</button>
+        </div>
+
+        <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад на главную</button>
     </div>
-
-    <div id="status" class="waiting">Ожидание поднятых рук...</div>
-
-    <div class="reset-notification" id="resetNotification">Очередь сброшена!</div>
-
-    <h2>Очередь ответа:</h2>
-    <ul id="queue"></ul>
-
-    <div>
-        <button id="nextBtn" disabled>Следующий в очереди</button>
-        <button id="resetBtn">Сбросить очередь</button>
-    </div>
-
-    <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад</button>
 
     <script>
         const firebaseConfig = {
@@ -71,26 +200,6 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-
-        function updateParticipantUrl() {
-            const currentUrl = window.location.href;
-            const baseUrl = currentUrl.replace('/host.html', '');
-            const participantUrl = baseUrl + '/participant.html';
-            
-            document.getElementById('participantUrl').innerHTML = `
-                ${participantUrl}
-                <br><br>
-                <button onclick="copyToClipboard('${participantUrl}')" style="padding: 5px 10px; font-size: 12px;">
-                    📋 Копировать ссылку
-                </button>
-            `;
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Ссылка скопирована!');
-            });
-        }
 
         let queue = [];
         
@@ -107,24 +216,29 @@
             queueElement.innerHTML = '';
             
             if (queue.length === 0) {
-                statusElement.textContent = 'Очередь пуста. Ожидание поднятых рук...';
+                statusElement.textContent = '👋 Очередь пуста. Ожидание поднятых рук...';
                 statusElement.className = 'waiting';
                 document.getElementById('nextBtn').disabled = true;
                 return;
             }
             
-            statusElement.textContent = `В очереди: ${queue.length} человек(а)`;
+            statusElement.textContent = `📊 В очереди: ${queue.length} человек(а)`;
             statusElement.className = 'active';
             document.getElementById('nextBtn').disabled = false;
             
             queue.forEach((participant, index) => {
                 const li = document.createElement('li');
                 const time = new Date(participant.timestamp).toLocaleTimeString();
+                const date = new Date(participant.timestamp).toLocaleDateString();
                 li.innerHTML = `
-                    <div>
-                        <strong>${index + 1}.</strong> ${participant.name}
+                    <div class="participant-info">
+                        <div>
+                            <strong>${index + 1}.</strong> ${participant.name}
+                        </div>
+                        <div class="participant-time">
+                            ${time} • ${date}
+                        </div>
                     </div>
-                    <div style="font-size: 0.8em; color: #666;">${time}</div>
                 `;
                 queueElement.appendChild(li);
             });
@@ -133,7 +247,6 @@
         document.getElementById('nextBtn').addEventListener('click', () => {
             if (queue.length > 0) {
                 const nextParticipant = queue[0];
-                alert(`Следующий: ${nextParticipant.name}`);
                 
                 database.ref('queue').once('value').then((snapshot) => {
                     const data = snapshot.val();
@@ -153,15 +266,13 @@
             // Устанавливаем флаг сброса
             database.ref('resetFlag').set(true);
             
-            // Показываем уведомление вместо alert
+            // Показываем уведомление
             const notification = document.getElementById('resetNotification');
             notification.style.display = 'block';
             setTimeout(() => {
                 notification.style.display = 'none';
             }, 3000);
         });
-
-        window.addEventListener('load', updateParticipantUrl);
     </script>
 </body>
 </html>
