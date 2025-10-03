@@ -35,23 +35,26 @@
             margin: 20px 0; 
             transition: all 0.3s;
         }
-        button:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-        }
-        button:disabled { 
-            background: #cccccc; 
-            cursor: not-allowed; 
-            transform: none;
-        }
-        #status {
-            margin: 20px 0;
-            min-height: 30px;
-            font-size: 1.1em;
-        }
+        button:hover { background: #45a049; transform: translateY(-2px); }
+        button:disabled { background: #cccccc; cursor: not-allowed; transform: none; }
+        #status { margin: 20px 0; min-height: 30px; font-size: 1.1em; }
         .success { color: #90EE90; }
         .info { color: #FFD700; }
+        .error { color: #ff6b6b; }
+        .debug { 
+            background: rgba(0,0,0,0.3); 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+            font-size: 12px; 
+            text-align: left;
+        }
+        .back-btn { background: #666; margin-top: 20px; font-size: 16px; padding: 10px 20px; }
     </style>
+    
+    <!-- Добавьте Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -61,93 +64,201 @@
         <button id="raiseHandBtn">Поднять руку</button>
         
         <div id="status"></div>
+        
+        <!-- Блок отладки -->
+        <div class="debug" id="debugInfo" style="display: none;">
+            <strong>Отладка:</strong>
+            <div id="debugLog"></div>
+        </div>
+        
         <p><small>Вы встанете в очередь. Дождитесь, когда ведущий назовёт ваше имя.</small></p>
+        
+        <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад</button>
+        <button class="back-btn" onclick="toggleDebug()" style="font-size: 12px; padding: 5px 10px;">🐛 Отладка</button>
     </div>
 
     <script>
-        // Генерируем уникальный ID для участника
-        const firebaseConfig = {
-  apiKey: "AIzaSyAZpeaZOl-jxbpfX8fibpPhuRdzFrr_LEk",
-  authDomain: "freezequiz-2fe84.firebaseapp.com",
-  databaseURL: "https://freezequiz-2fe84-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "freezequiz-2fe84",
-  storageBucket: "freezequiz-2fe84.firebasestorage.app",
-  messagingSenderId: "503013037091",
-  appId: "1:503013037091:web:0571761701af4ad0c38d96"};
+        // Функция для отладки
+        function logDebug(message) {
+            const debugLog = document.getElementById('debugLog');
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugLog) {
+                debugLog.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            }
+        }
 
-        firebase.initializeApp(firebaseConfig);
-        const app = initializeApp(firebaseConfig);
-        
-        // Запрашиваем имя у пользователя
-        participantName = prompt("Введите ваше имя для участия в викторине:", "Участник");
-        if (!participantName || participantName.trim() === '') {
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // ==== ВСТАВЬТЕ ВАШУ REAL КОНФИГУРАЦИЮ FIREBASE ЗДЕСЬ ====
+        const firebaseConfig = {
+            apiKey: "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:aaaaaaaaaaaaaaaa"
+        };
+        // ==== КОНЕЦ КОНФИГУРАЦИИ ====
+
+        logDebug('Начало загрузки...');
+
+        // Инициализация Firebase
+        let database;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            logDebug('Firebase инициализирован');
+        } catch (error) {
+            logDebug('Ошибка инициализации Firebase: ' + error.message);
+            showError('Ошибка подключения к серверу');
+        }
+
+        const participantId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let participantName = '';
+        let handRaised = false;
+
+        // Запрос имени
+        try {
+            participantName = prompt("Введите ваше имя:", "Участник") || "Анонимный участник";
+            logDebug('Имя участника: ' + participantName);
+        } catch (error) {
             participantName = "Анонимный участник";
+            logDebug('Имя по умолчанию: ' + participantName);
         }
 
         const raiseHandBtn = document.getElementById('raiseHandBtn');
         const statusElement = document.getElementById('status');
 
-        // Функция поднятия руки
-        function raiseHand() {
-            if (handRaised) return;
-            
-            handRaised = true;
-            raiseHandBtn.disabled = true;
-            statusElement.textContent = "✅ Вы подняли руку! Ожидайте своей очереди.";
+        function showError(message) {
+            statusElement.textContent = "❌ " + message;
+            statusElement.className = "error";
+        }
+
+        function showSuccess(message) {
+            statusElement.textContent = "✅ " + message;
             statusElement.className = "success";
-            
-            // Добавляем себя в очередь на сервере ведущего
+        }
+
+        function showInfo(message) {
+            statusElement.textContent = "🔄 " + message;
+            statusElement.className = "info";
+        }
+
+        // Проверяем, не подняли ли мы уже руку
+        if (database) {
             try {
-                const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
-                raises.push({
-                    participantId: participantId,
-                    name: participantName,
-                    timestamp: Date.now()
+                database.ref('queue').once('value').then((snapshot) => {
+                    const queue = snapshot.val();
+                    logDebug('Проверка очереди: ' + (queue ? Object.keys(queue).length : 0) + ' участников');
+                    
+                    if (queue) {
+                        const existing = Object.values(queue).find(p => p.id === participantId);
+                        if (existing) {
+                            handRaised = true;
+                            raiseHandBtn.disabled = true;
+                            showSuccess('Вы уже в очереди! Ожидайте...');
+                            logDebug('Участник уже в очереди');
+                        }
+                    }
+                }).catch(error => {
+                    logDebug('Ошибка проверки очереди: ' + error.message);
                 });
-                localStorage.setItem('handRaises', JSON.stringify(raises));
-            } catch (e) {
-                statusElement.textContent = "❌ Ошибка. Попробуйте еще раз.";
-                statusElement.className = "";
-                handRaised = false;
-                raiseHandBtn.disabled = false;
+            } catch (error) {
+                logDebug('Ошибка при проверке очереди: ' + error.message);
             }
         }
 
-        // Функция проверки сброса очереди
-        function checkForReset() {
+        // Слушаем сброс очереди
+        if (database) {
             try {
-                const resetTime = parseInt(localStorage.getItem('quizReset') || '0');
-                
-                if (resetTime > lastResetTime) {
-                    lastResetTime = resetTime;
+                database.ref('resetFlag').on('value', (snapshot) => {
+                    const resetValue = snapshot.val();
+                    logDebug('Получен флаг сброса: ' + resetValue);
                     
-                    if (handRaised) {
+                    if (resetValue === true) {
                         handRaised = false;
                         raiseHandBtn.disabled = false;
-                        statusElement.textContent = "🔄 Начат новый вопрос! Можете снова поднять руку.";
-                        statusElement.className = "info";
+                        showInfo('Начат новый вопрос! Можете снова поднять руку.');
+                        logDebug('Очередь сброшена, кнопка разблокирована');
                         
-                        // Через 5 секунд убираем сообщение
                         setTimeout(() => {
                             if (!handRaised) {
                                 statusElement.textContent = "";
                             }
                         }, 5000);
                     }
-                }
-            } catch (e) {
-                console.log('Ошибка при проверке сброса:', e);
+                });
+            } catch (error) {
+                logDebug('Ошибка слушателя сброса: ' + error.message);
             }
         }
 
-        // Обработчик кнопки
+        // Функция поднятия руки
+        async function raiseHand() {
+            logDebug('Нажата кнопка "Поднять руку"');
+            
+            if (handRaised) {
+                logDebug('Рука уже поднята, игнорируем');
+                return;
+            }
+            
+            if (!database) {
+                showError('Нет подключения к серверу');
+                logDebug('База данных не инициализирована');
+                return;
+            }
+            
+            try {
+                logDebug('Начинаем процесс поднятия руки...');
+                
+                handRaised = true;
+                raiseHandBtn.disabled = true;
+                showSuccess('Поднимаем руку...');
+                logDebug('Кнопка заблокирована');
+
+                // Добавляем в очередь в Firebase
+                logDebug('Добавляем в базу данных...');
+                const newParticipantRef = database.ref('queue').push();
+                
+                await newParticipantRef.set({
+                    id: participantId,
+                    name: participantName,
+                    timestamp: Date.now()
+                });
+                
+                logDebug('Успешно добавлен в очередь с ID: ' + newParticipantRef.key);
+                showSuccess('Вы подняли руку! Ожидайте своей очереди.');
+                
+            } catch (error) {
+                logDebug('Ошибка при поднятии руки: ' + error.message);
+                showError('Ошибка соединения. Попробуйте еще раз.');
+                handRaised = false;
+                raiseHandBtn.disabled = false;
+            }
+        }
+
+        // Проверяем доступность базы данных
+        if (database) {
+            try {
+                // Тестовый запрос к базе данных
+                database.ref('.info/connected').on('value', (snapshot) => {
+                    const connected = snapshot.val();
+                    logDebug('Статус подключения Firebase: ' + (connected ? 'connected' : 'disconnected'));
+                });
+            } catch (error) {
+                logDebug('Ошибка проверки подключения: ' + error.message);
+            }
+        } else {
+            logDebug('База данных недоступна');
+            showError('Проблема с подключением');
+        }
+
         raiseHandBtn.addEventListener('click', raiseHand);
-        
-        // Проверяем сброс очереди каждую секунду
-        setInterval(checkForReset, 1000);
-        
-        // Первоначальная проверка
-        checkForReset();
+        logDebug('Страница загружена, готов к работе');
     </script>
 </body>
 </html>
