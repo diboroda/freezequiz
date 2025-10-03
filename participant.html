@@ -22,7 +22,7 @@
             border-radius: 15px; 
             backdrop-filter: blur(10px);
             max-width: 90%;
-            width: 400px;
+            width: 500px;
         }
         button { 
             background: #4CAF50; 
@@ -40,7 +40,33 @@
         #status { margin: 20px 0; min-height: 30px; font-size: 1.1em; }
         .success { color: #90EE90; }
         .error { color: #ff6b6b; }
+        .info { color: #FFD700; }
         .back-btn { background: #666; margin-top: 20px; font-size: 16px; padding: 10px 20px; }
+        .queue-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        .queue-list {
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .queue-list li {
+            background: rgba(255,255,255,0.2);
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .queue-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #FFD700;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -53,6 +79,12 @@
         <button id="raiseHandBtn">Поднять руку</button>
         
         <div id="status"></div>
+
+        <!-- Секция очереди -->
+        <div class="queue-section">
+            <div class="queue-title">Текущая очередь:</div>
+            <ul class="queue-list" id="participantQueue"></ul>
+        </div>
         
         <p><small>Вы встанете в очередь. Дождитесь, когда ведущий назовёт ваше имя.</small></p>
         
@@ -60,7 +92,6 @@
     </div>
 
     <script>
-        // КОНФИГУРАЦИЯ FIREBASE - ЗАМЕНИТЬ!
         const firebaseConfig = {
             apiKey: "AIzaSyDpPlOq0bNH0TFy7d-Kwg28SCrF6BR0gGM",
             authDomain: "freezequiz-e7b25.firebaseapp.com",
@@ -71,7 +102,6 @@
             appId: "1:940610817345:web:cb5e7dc96740dcc90825c0"
         };
 
-        // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -79,8 +109,21 @@
         let participantName = '';
         let handRaised = false;
 
-        // Запрос имени
-        participantName = prompt("Введите ваше имя:", "Участник") || "Анонимный участник";
+        // Запрос имени с проверкой
+        function getName() {
+            let name = '';
+            while (!name || name.trim() === '' || name === 'Участник') {
+                name = prompt("Введите ваше имя:", "") || "";
+                if (name === 'Участник') {
+                    alert('Пожалуйста, введите ваше настоящее имя, а не "Участник"');
+                } else if (!name.trim()) {
+                    alert('Имя не может быть пустым');
+                }
+            }
+            return name.trim();
+        }
+
+        participantName = getName();
 
         const raiseHandBtn = document.getElementById('raiseHandBtn');
         const statusElement = document.getElementById('status');
@@ -100,12 +143,32 @@
             statusElement.className = "info";
         }
 
-        // Слушаем сброс очереди
+        // Слушаем очередь для отображения
+        database.ref('queue').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const queue = data ? Object.values(data) : [];
+            renderParticipantQueue(queue);
+            
+            // Проверяем, есть ли текущий участник в очереди
+            const inQueue = queue.find(p => p.id === participantId);
+            if (inQueue && !handRaised) {
+                handRaised = true;
+                raiseHandBtn.disabled = true;
+                showSuccess('Вы в очереди! Ожидайте...');
+            }
+        });
+
+        // Слушаем сброс очереди (исправленная версия)
         database.ref('resetFlag').on('value', (snapshot) => {
             if (snapshot.val() === true) {
                 handRaised = false;
                 raiseHandBtn.disabled = false;
                 showInfo('Начат новый вопрос! Можете снова поднять руку.');
+                
+                // Автоматически сбрасываем флаг
+                setTimeout(() => {
+                    database.ref('resetFlag').set(false);
+                }, 1000);
                 
                 setTimeout(() => {
                     if (!handRaised) {
@@ -114,6 +177,33 @@
                 }, 5000);
             }
         });
+
+        // Функция отображения очереди для участника
+        function renderParticipantQueue(queue) {
+            const queueElement = document.getElementById('participantQueue');
+            queueElement.innerHTML = '';
+            
+            if (queue.length === 0) {
+                queueElement.innerHTML = '<li>Очередь пуста</li>';
+                return;
+            }
+            
+            queue.forEach((participant, index) => {
+                const li = document.createElement('li');
+                const time = new Date(participant.timestamp).toLocaleTimeString();
+                const isCurrentUser = participant.id === participantId;
+                li.innerHTML = `
+                    <div>
+                        <strong>${index + 1}.</strong> 
+                        <span style="${isCurrentUser ? 'color: #90EE90; font-weight: bold;' : ''}">
+                            ${participant.name} ${isCurrentUser ? '(Вы)' : ''}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.8em; color: #ccc;">${time}</div>
+                `;
+                queueElement.appendChild(li);
+            });
+        }
 
         // Функция поднятия руки
         async function raiseHand() {
@@ -124,7 +214,6 @@
                 raiseHandBtn.disabled = true;
                 showSuccess('Поднимаем руку...');
 
-                // Добавляем в очередь в Firebase
                 const newParticipantRef = database.ref('queue').push();
                 
                 await newParticipantRef.set({

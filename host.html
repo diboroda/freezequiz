@@ -23,6 +23,14 @@
             word-break: break-all;
             font-family: monospace;
         }
+        .reset-notification {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -38,6 +46,8 @@
 
     <div id="status" class="waiting">Ожидание поднятых рук...</div>
 
+    <div class="reset-notification" id="resetNotification">Очередь сброшена!</div>
+
     <h2>Очередь ответа:</h2>
     <ul id="queue"></ul>
 
@@ -49,7 +59,6 @@
     <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад</button>
 
     <script>
-        // КОНФИГУРАЦИЯ FIREBASE - ЗАМЕНИТЬ!
         const firebaseConfig = {
             apiKey: "AIzaSyDpPlOq0bNH0TFy7d-Kwg28SCrF6BR0gGM",
             authDomain: "freezequiz-e7b25.firebaseapp.com",
@@ -60,11 +69,9 @@
             appId: "1:940610817345:web:cb5e7dc96740dcc90825c0"
         };
 
-        // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Генерируем ссылку для участников
         function updateParticipantUrl() {
             const currentUrl = window.location.href;
             const baseUrl = currentUrl.replace('/host.html', '');
@@ -87,7 +94,6 @@
 
         let queue = [];
         
-        // Слушаем изменения в очереди
         database.ref('queue').on('value', (snapshot) => {
             const data = snapshot.val();
             queue = data ? Object.values(data) : [];
@@ -129,7 +135,6 @@
                 const nextParticipant = queue[0];
                 alert(`Следующий: ${nextParticipant.name}`);
                 
-                // Удаляем первого участника из очереди
                 database.ref('queue').once('value').then((snapshot) => {
                     const data = snapshot.val();
                     if (data) {
@@ -147,7 +152,13 @@
             database.ref('queue').remove();
             // Устанавливаем флаг сброса
             database.ref('resetFlag').set(true);
-            alert('Очередь сброшена! Участники могут снова поднимать руки.');
+            
+            // Показываем уведомление вместо alert
+            const notification = document.getElementById('resetNotification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
         });
 
         window.addEventListener('load', updateParticipantUrl);
