@@ -36,7 +36,7 @@
         #queue li { 
             background: rgba(255,255,255,0.2); 
             margin: 10px 0; 
-            padding: 20px; 
+            padding: 15px 20px; 
             border-radius: 15px; 
             display: flex; 
             justify-content: space-between;
@@ -132,14 +132,19 @@
         }
         .participant-info {
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .participant-name {
+            flex-grow: 1;
             text-align: left;
         }
         .participant-time {
             font-size: 0.9em;
-            color: rgba(255,255,255,0.8);
-            margin-top: 5px;
+            color: rgba(255,255,255,0.7);
+            margin-left: 15px;
+            white-space: nowrap;
         }
         @media (max-width: 768px) {
             body {
@@ -157,8 +162,12 @@
                 font-size: 1.2em;
             }
             #queue li {
-                padding: 15px;
+                padding: 12px 15px;
                 font-size: 1em;
+            }
+            .participant-time {
+                font-size: 0.8em;
+                margin-left: 10px;
             }
         }
     </style>
@@ -176,13 +185,15 @@
 
         <div class="reset-notification" id="resetNotification">✅ Очередь сброшена!</div>
 
-        <div class="queue-title">Очередь ответа:</div>
-        <ul id="queue"></ul>
-
+        <!-- Кнопки управления ПЕРВЫМИ -->
         <div class="control-buttons">
             <button id="nextBtn" class="control-btn" disabled>🎤 Следующий в очереди</button>
             <button id="resetBtn" class="control-btn">🔄 Сбросить очередь</button>
         </div>
+
+        <!-- Очередь ПОСЛЕ кнопок -->
+        <div class="queue-title">Очередь ответа:</div>
+        <ul id="queue"></ul>
 
         <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад на главную</button>
     </div>
@@ -229,14 +240,13 @@
             queue.forEach((participant, index) => {
                 const li = document.createElement('li');
                 const time = new Date(participant.timestamp).toLocaleTimeString();
-                const date = new Date(participant.timestamp).toLocaleDateString();
                 li.innerHTML = `
                     <div class="participant-info">
-                        <div>
+                        <div class="participant-name">
                             <strong>${index + 1}.</strong> ${participant.name}
                         </div>
                         <div class="participant-time">
-                            ${time} • ${date}
+                            ${time}
                         </div>
                     </div>
                 `;
