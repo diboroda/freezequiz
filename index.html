@@ -42,10 +42,11 @@
   projectId: "freezequiz-2fe84",
   storageBucket: "freezequiz-2fe84.firebasestorage.app",
   messagingSenderId: "503013037091",
-  appId: "1:503013037091:web:0571761701af4ad0c38d96"};
-
-        let queue = [];
-        let lastResetTime = Date.now();
+  appId: "1:503013037091:web:0571761701af4ad0c38d96"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const app = initializeApp(firebaseConfig);
         
         // Функция проверки новых участников
         function checkForNewParticipants() {
