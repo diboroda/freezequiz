@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель ведущего - Викторина</title>
+    <title>Панель ведущего - FREEZEQUIZ</title>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
         #queue { list-style: none; padding: 0; min-height: 200px; }
@@ -24,18 +24,16 @@
             font-family: monospace;
         }
     </style>
-    
-    <!-- Добавьте Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 </head>
 <body>
-    <h1>🎤 Панель ведущего</h1>
+    <h1>🎤 Панель ведущего FREEZEQUIZ</h1>
     
     <div class="participant-link">
         <strong>Ссылка для участников:</strong><br>
         <div class="url-box" id="participantUrl">Загрузка...</div>
-        <small>Отправьте эту ссылку участникам или покажите QR-код</small>
+        <small>Отправьте эту ссылку участникам</small>
     </div>
 
     <div id="status" class="waiting">Ожидание поднятых рук...</div>
@@ -51,17 +49,16 @@
     <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад</button>
 
     <script>
-        // ==== ВСТАВЬТЕ ВАШУ REAL КОНФИГУРАЦИЮ FIREBASE ЗДЕСЬ ====
+        // КОНФИГУРАЦИЯ FIREBASE - ЗАМЕНИТЬ!
         const firebaseConfig = {
-  apiKey: "AIzaSyAZpeaZOl-jxbpfX8fibpPhuRdzFrr_LEk",
-  authDomain: "freezequiz-2fe84.firebaseapp.com",
-  databaseURL: "https://freezequiz-2fe84-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "freezequiz-2fe84",
-  storageBucket: "freezequiz-2fe84.firebasestorage.app",
-  messagingSenderId: "503013037091",
-  appId: "1:503013037091:web:0571761701af4ad0c38d96"
-};
-        // ==== КОНЕЦ КОНФИГУРАЦИИ ====
+            apiKey: "AIzaSyDpPlOq0bNH0TFy7d-Kwg28SCrF6BR0gGM",
+            authDomain: "freezequiz-e7b25.firebaseapp.com",
+            databaseURL: "https://freezequiz-e7b25-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "freezequiz-e7b25",
+            storageBucket: "freezequiz-e7b25.firebasestorage.app",
+            messagingSenderId: "940610817345",
+            appId: "1:940610817345:web:cb5e7dc96740dcc90825c0"
+        };
 
         // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
@@ -82,7 +79,6 @@
             `;
         }
 
-        // Функция копирования в буфер обмена
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 alert('Ссылка скопирована!');
@@ -97,16 +93,7 @@
             queue = data ? Object.values(data) : [];
             renderQueue();
         });
-
-        // Слушаем сброс очереди
-        database.ref('resetFlag').on('value', (snapshot) => {
-            if (snapshot.val() === true) {
-                // Автоматически сбрасываем флаг
-                database.ref('resetFlag').set(false);
-            }
-        });
         
-        // Функция отрисовки очереди
         function renderQueue() {
             const queueElement = document.getElementById('queue');
             const statusElement = document.getElementById('status');
@@ -137,7 +124,6 @@
             });
         }
         
-        // Обработчики кнопок
         document.getElementById('nextBtn').addEventListener('click', () => {
             if (queue.length > 0) {
                 const nextParticipant = queue[0];
@@ -164,7 +150,6 @@
             alert('Очередь сброшена! Участники могут снова поднимать руки.');
         });
 
-        // Обновляем ссылку при загрузке
         window.addEventListener('load', updateParticipantUrl);
     </script>
 </body>
