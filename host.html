@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель ведущего - Викторина</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
+        #queue { list-style: none; padding: 0; min-height: 200px; }
+        #queue li { background: #f0f0f0; margin: 10px 0; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; }
+        button { background: #4CAF50; color: white; padding: 15px 32px; border: none; border-radius: 5px; margin: 10px; cursor: pointer; }
+        #resetBtn { background: #f44336; }
+        .participant-link { margin: 30px 0; padding: 15px; background: #e7f3ff; border-radius: 5px; }
+        .waiting { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; }
+        .active { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; }
+        .back-btn { background: #666; margin-top: 20px; }
+        .url-box { 
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #ccc;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+        }
+    </style>
+    
+    <!-- Добавьте Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+</head>
+<body>
+    <h1>🎤 Панель ведущего</h1>
+    
+    <div class="participant-link">
+        <strong>Ссылка для участников:</strong><br>
+        <div class="url-box" id="participantUrl">Загрузка...</div>
+        <small>Отправьте эту ссылку участникам или покажите QR-код</small>
+    </div>
+
+    <div id="status" class="waiting">Ожидание поднятых рук...</div>
+
+    <h2>Очередь ответа:</h2>
+    <ul id="queue"></ul>
+
+    <div>
+        <button id="nextBtn" disabled>Следующий в очереди</button>
+        <button id="resetBtn">Сбросить очередь</button>
+    </div>
+
+    <button class="back-btn" onclick="window.location.href = 'index.html'">← Назад</button>
+
+    <script>
+        // ==== ВСТАВЬТЕ ВАШУ REAL КОНФИГУРАЦИЮ FIREBASE ЗДЕСЬ ====
+        const firebaseConfig = {
+            apiKey: "ваш-api-key",
+            authDomain: "ваш-project.firebaseapp.com",
+            databaseURL: "https://ваш-project-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "ваш-project",
+            storageBucket: "ваш-project.appspot.com",
+            messagingSenderId: "ваш-sender-id",
+            appId: "ваш-app-id"
+        };
+        // ==== КОНЕЦ КОНФИГУРАЦИИ ====
+
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Генерируем ссылку для участников
+        function updateParticipantUrl() {
+            const currentUrl = window.location.href;
+            const baseUrl = currentUrl.replace('/host.html', '');
+            const participantUrl = baseUrl + '/participant.html';
+            
+            document.getElementById('participantUrl').innerHTML = `
+                ${participantUrl}
+                <br><br>
+                <button onclick="copyToClipboard('${participantUrl}')" style="padding: 5px 10px; font-size: 12px;">
+                    📋 Копировать ссылку
+                </button>
+            `;
+        }
+
+        // Функция копирования в буфер обмена
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Ссылка скопирована!');
+            });
+        }
+
+        let queue = [];
+        
+        // Слушаем изменения в очереди
+        database.ref('queue').on('value', (snapshot) => {
+            const data = snapshot.val();
+            queue = data ? Object.values(data) : [];
+            renderQueue();
+        });
+
+        // Слушаем сброс очереди
+        database.ref('resetFlag').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                // Автоматически сбрасываем флаг
+                database.ref('resetFlag').set(false);
+            }
+        });
+        
+        // Функция отрисовки очереди
+        function renderQueue() {
+            const queueElement = document.getElementById('queue');
+            const statusElement = document.getElementById('status');
+            
+            queueElement.innerHTML = '';
+            
+            if (queue.length === 0) {
+                statusElement.textContent = 'Очередь пуста. Ожидание поднятых рук...';
+                statusElement.className = 'waiting';
+                document.getElementById('nextBtn').disabled = true;
+                return;
+            }
+            
+            statusElement.textContent = `В очереди: ${queue.length} человек(а)`;
+            statusElement.className = 'active';
+            document.getElementById('nextBtn').disabled = false;
+            
+            queue.forEach((participant, index) => {
+                const li = document.createElement('li');
+                const time = new Date(participant.timestamp).toLocaleTimeString();
+                li.innerHTML = `
+                    <div>
+                        <strong>${index + 1}.</strong> ${participant.name}
+                    </div>
+                    <div style="font-size: 0.8em; color: #666;">${time}</div>
+                `;
+                queueElement.appendChild(li);
+            });
+        }
+        
+        // Обработчики кнопок
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (queue.length > 0) {
+                const nextParticipant = queue[0];
+                alert(`Следующий: ${nextParticipant.name}`);
+                
+                // Удаляем первого участника из очереди
+                database.ref('queue').once('value').then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const keys = Object.keys(data);
+                        if (keys.length > 0) {
+                            database.ref('queue/' + keys[0]).remove();
+                        }
+                    }
+                });
+            }
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            // Очищаем всю очередь
+            database.ref('queue').remove();
+            // Устанавливаем флаг сброса
+            database.ref('resetFlag').set(true);
+            alert('Очередь сброшена! Участники могут снова поднимать руки.');
+        });
+
+        // Обновляем ссылку при загрузке
+        window.addEventListener('load', updateParticipantUrl);
+    </script>
+</body>
+</html>

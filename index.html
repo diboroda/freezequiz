@@ -3,127 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель ведущего - Викторина</title>
+    <title>Викторина - Выбор режима</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
-        #queue { list-style: none; padding: 0; min-height: 200px; }
-        #queue li { background: #f0f0f0; margin: 10px 0; padding: 15px; border-radius: 5px; }
-        button { background: #4CAF50; color: white; padding: 15px 32px; border: none; border-radius: 5px; margin: 10px; cursor: pointer; }
-        #resetBtn { background: #f44336; }
-        .participant-link { margin: 30px 0; padding: 15px; background: #e7f3ff; border-radius: 5px; word-break: break-all; }
-        .waiting { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; }
-        .active { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; }
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            text-align: center; 
+        }
+        .container { 
+            background: rgba(255,255,255,0.1); 
+            padding: 40px; 
+            border-radius: 15px; 
+            backdrop-filter: blur(10px);
+            max-width: 90%;
+            width: 400px;
+        }
+        button { 
+            background: #4CAF50; 
+            color: white; 
+            padding: 20px 40px; 
+            font-size: 20px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            margin: 10px; 
+            width: 200px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .host-btn { background: #2196F3; }
+        .instructions {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <h1>🎤 Панель ведущего - Викторина</h1>
-    
-    <div class="participant-link">
-        <strong>Ссылка для участников:</strong><br>
-        <span id="participantUrl">...</span>
+    <div class="container">
+        <h1>🎤 Викторина</h1>
+        <p>Выберите ваш режим:</p>
+        <button class="host-btn" onclick="window.location.href = 'host.html'">Я ведущий</button><br>
+        <button onclick="window.location.href = 'participant.html'">Я участник</button>
+        
+        <div class="instructions">
+            <strong>Как использовать:</strong><br>
+            1. Ведущий открывает панель управления<br>
+            2. Участники получают ссылку от ведущего<br>
+            3. Во время вопроса участники нажимают "Поднять руку"<br>
+            4. Ведущий видит очередь и вызывает участников
+        </div>
     </div>
-
-    <div id="status" class="waiting">Ожидание поднятых рук...</div>
-
-    <h2>Очередь ответа:</h2>
-    <ul id="queue"></ul>
-
-    <div>
-        <button id="nextBtn" disabled>Следующий в очереди</button>
-        <button id="resetBtn">Сбросить очередь</button>
-    </div>
-
-    <script>
-        // Генерируем ссылку для участников
-        const firebaseConfig = {
-  apiKey: "AIzaSyAZpeaZOl-jxbpfX8fibpPhuRdzFrr_LEk",
-  authDomain: "freezequiz-2fe84.firebaseapp.com",
-  databaseURL: "https://freezequiz-2fe84-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "freezequiz-2fe84",
-  storageBucket: "freezequiz-2fe84.firebasestorage.app",
-  messagingSenderId: "503013037091",
-  appId: "1:503013037091:web:0571761701af4ad0c38d96"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const app = initializeApp(firebaseConfig);
-        
-        // Функция проверки новых участников
-        function checkForNewParticipants() {
-            try {
-                const raises = JSON.parse(localStorage.getItem('handRaises') || '[]');
-                
-                if (raises.length > 0) {
-                    raises.forEach(raise => {
-                        // Проверяем что участник еще не в очереди и поднял руку после последнего сброса
-                        if (!queue.find(p => p.id === raise.participantId) && raise.timestamp > lastResetTime) {
-                            queue.push({
-                                id: raise.participantId,
-                                name: raise.name,
-                                timestamp: raise.timestamp
-                            });
-                        }
-                    });
-                    
-                    // Очищаем список поднятий рук
-                    localStorage.setItem('handRaises', '[]');
-                    renderQueue();
-                }
-            } catch (e) {
-                console.log('Ошибка при проверке участников:', e);
-            }
-        }
-        
-        // Функция отрисовки очереди
-        function renderQueue() {
-            const queueElement = document.getElementById('queue');
-            const statusElement = document.getElementById('status');
-            
-            queueElement.innerHTML = '';
-            
-            if (queue.length === 0) {
-                statusElement.textContent = 'Очередь пуста. Ожидание поднятых рук...';
-                statusElement.className = 'waiting';
-                document.getElementById('nextBtn').disabled = true;
-                return;
-            }
-            
-            statusElement.textContent = `В очереди: ${queue.length} человек(а)`;
-            statusElement.className = 'active';
-            document.getElementById('nextBtn').disabled = false;
-            
-            queue.forEach((participant, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<strong>${index + 1}.</strong> ${participant.name}`;
-                queueElement.appendChild(li);
-            });
-        }
-        
-        // Обработчики кнопок
-        document.getElementById('nextBtn').addEventListener('click', () => {
-            if (queue.length > 0) {
-                const nextParticipant = queue.shift();
-                alert(`Следующий: ${nextParticipant.name}`);
-                renderQueue();
-            }
-        });
-        
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            queue = [];
-            lastResetTime = Date.now();
-            
-            // Сообщаем всем участникам о сбросе
-            localStorage.setItem('quizReset', lastResetTime.toString());
-            
-            renderQueue();
-            alert('Очередь сброшена! Участники могут снова поднимать руки.');
-        });
-        
-        // Проверяем новых участников каждую секунду
-        setInterval(checkForNewParticipants, 1000);
-        
-        // Первоначальная загрузка
-        renderQueue();
-    </script>
 </body>
 </html>
