@@ -75,6 +75,9 @@
   messagingSenderId: "503013037091",
   appId: "1:503013037091:web:0571761701af4ad0c38d96"};
 
+        firebase.initializeApp(firebaseConfig);
+        const app = initializeApp(firebaseConfig);
+        
         // Запрашиваем имя у пользователя
         participantName = prompt("Введите ваше имя для участия в викторине:", "Участник");
         if (!participantName || participantName.trim() === '') {
